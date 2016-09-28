@@ -5,83 +5,183 @@
 #include <stdio.h>
 #include <assert.h>
 
-
-__attribute__((always_inline))
-void normalize(double *v)
+static void normalize(double *v)
 {
-    double d = sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-    assert(d != 0.0 && "Error calculating normal");
-    v[0] /= d;
-    v[1] /= d;
-    v[2] /= d;
+	const double a = 1.0;
+
+	asm("movsd  (%rdi),%xmm1;"
+      "movsd  0x8(%rdi),%xmm2;"
+      "movsd  0x10(%rdi),%xmm3;"
+      "mulsd  %xmm1,%xmm1;"
+      "mulsd  %xmm2,%xmm2;"
+      "mulsd  %xmm3,%xmm3;"
+      "addsd  %xmm2,%xmm1;"
+      "addsd  %xmm3,%xmm1;"
+      "sqrtsd %xmm1,%xmm1;"
+      "divsd  %xmm1,%xmm0;"
+			"movsd  (%rdi),%xmm1;"
+      "movsd  0x8(%rdi),%xmm2;"
+      "movsd  0x10(%rdi),%xmm3;"
+      "mulsd  %xmm0,%xmm1;"
+      "mulsd  %xmm0,%xmm2;"
+      "mulsd  %xmm0,%xmm3;"
+			"movsd  %xmm1, (%rdi);"
+      "movsd  %xmm2, 0x8(%rdi);"
+      "movsd  %xmm3, 0x10(%rdi);"
+				);
 }
 
-__attribute__((always_inline))
-double length(const double *v)
+static double length(const double *v)
 {
-    return sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+	asm("movsd  (%rdi),%xmm1;"
+      "movsd  0x8(%rdi),%xmm0;"
+      "mulsd  %xmm1,%xmm1;"
+      "mulsd  %xmm0,%xmm0;"
+      "movsd  0x10(%rdi),%xmm2;"
+      "mulsd  %xmm2,%xmm2;"
+      "addsd  %xmm1,%xmm0;"
+      "addsd  %xmm2,%xmm0;"
+      "sqrtsd %xmm0,%xmm0;");
 }
 
-__attribute__((always_inline))
-void add_vector(const double *a, const double *b, double *out)
+static void add_vector(const double *a, const double *b, double *out)
 {
-    out[0] = a[0] + b[0];
-    out[1] = a[1] + b[1];
-    out[2] = a[2] + b[2];
+	asm("movsd  (%rdi),%xmm0;"
+      "addsd  (%rsi),%xmm0;"
+      "movsd  %xmm0,(%rdx);"
+      "movsd  0x8(%rdi),%xmm0;"
+      "addsd  0x8(%rsi),%xmm0;"
+      "movsd  %xmm0,0x8(%rdx);"
+      "movsd  0x10(%rdi),%xmm0;"
+      "addsd  0x10(%rsi),%xmm0;"
+      "movsd  %xmm0,0x10(%rdx);");
 }
 
-__attribute__((always_inline))
-void subtract_vector(const double *a, const double *b, double *out)
+static void subtract_vector(const double *a, const double *b, double *out)
 {
-    out[0] = a[0] - b[0];
-    out[1] = a[1] - b[1];
-    out[2] = a[2] - b[2];
+	asm("movsd  (%rdi),%xmm0;"
+      "subsd  (%rsi),%xmm0;"
+      "movsd  %xmm0,(%rdx);"
+      "movsd  0x8(%rdi),%xmm0;"
+      "subsd  0x8(%rsi),%xmm0;"
+      "movsd  %xmm0,0x8(%rdx);"
+      "movsd  0x10(%rdi),%xmm0;"
+      "subsd  0x10(%rsi),%xmm0;"
+      "movsd  %xmm0,0x10(%rdx);");
 }
 
-__attribute__((always_inline))
-void multiply_vectors(const double *a, const double *b, double *out)
+static void multiply_vectors(const double *a, const double *b, double *out)
 {
-    out[0] = a[0] * b[0];
-    out[1] = a[1] * b[1];
-    out[2] = a[2] * b[2];
+	asm("movsd  (%rdi),%xmm0;"
+      "mulsd  (%rsi),%xmm0;"
+      "movsd  %xmm0,(%rdx);"
+      "movsd  0x8(%rdi),%xmm0;"
+      "mulsd  0x8(%rsi),%xmm0;"
+      "movsd  %xmm0,0x8(%rdx);"
+      "movsd  0x10(%rdi),%xmm0;"
+      "mulsd  0x10(%rsi),%xmm0;"
+      "movsd  %xmm0,0x10(%rdx);");
 }
 
-__attribute__((always_inline))
-void multiply_vector(const double *a, double b, double *out)
+static void multiply_vector(const double *a, double b, double *out)
 {
-    out[0] = a[0] * b;
-    out[1] = a[1] * b;
-    out[2] = a[2] * b;
+	asm("movsd  (%rdi),%xmm1;"
+      "mulsd  %xmm0,%xmm1;"
+      "movsd  %xmm1,(%rsi);"
+      "movsd  0x8(%rdi),%xmm1;"
+      "mulsd  %xmm0,%xmm1;"
+      "movsd  %xmm1,0x8(%rsi);"
+      "mulsd  0x10(%rdi),%xmm0;"
+      "movsd  %xmm0,0x10(%rsi);");
 }
 
-__attribute__((always_inline))
-void cross_product(const double *v1, const double *v2, double *out)
+static void cross_product(const double *v1, const double *v2, double *out)
 {
-    out[0] = v1[1] * v2[2] - v1[2] * v2[1];
-    out[1] = v1[2] * v2[0] - v1[0] * v2[2];
-    out[2] = v1[0] * v2[1] - v1[1] * v2[0];
+	asm("movsd  0x8(%rdi),%xmm0;"
+      "movsd  0x10(%rdi),%xmm1;"
+      "mulsd  0x10(%rsi),%xmm0;"
+      "mulsd  0x8(%rsi),%xmm1;"
+      "subsd  %xmm1,%xmm0;"
+      "movsd  %xmm0,(%rdx);"
+      "movsd  0x10(%rdi),%xmm0;"
+      "movsd  (%rdi),%xmm1;"
+      "mulsd  (%rsi),%xmm0;"
+      "mulsd  0x10(%rsi),%xmm1;"
+      "subsd  %xmm1,%xmm0;"
+      "movsd  %xmm0,0x8(%rdx);"
+      "movsd  (%rdi),%xmm0;"
+      "movsd  0x8(%rdi),%xmm1;"
+      "mulsd  0x8(%rsi),%xmm0;"
+      "mulsd  (%rsi),%xmm1;"
+      "subsd  %xmm1,%xmm0;"
+      "movsd  %xmm0,0x10(%rdx);");
 }
 
-__attribute__((always_inline))
-double dot_product(const double *v1, const double *v2)
+static double dot_product(const double *v1, const double *v2)
 {
-    return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
+	asm("movsd  (%rdi),%xmm0;"
+      "movsd  0x8(%rdi),%xmm1;"
+      "mulsd  (%rsi),%xmm0;"
+      "mulsd  0x8(%rsi),%xmm1;"
+      "addsd  %xmm1,%xmm0;"
+      "movsd  0x10(%rdi),%xmm1;"
+      "mulsd  0x10(%rsi),%xmm1;"
+			"addsd  %xmm1,%xmm0;");
 }
 
-__attribute__((always_inline))
-void scalar_triple_product(const double *u, const double *v, const double *w,
+static void scalar_triple_product(const double *u, const double *v, const double *w,
                            double *out)
 {
-    cross_product(v, w, out);
-    multiply_vectors(u, out, out);
+	asm("movsd  0x8(%rsi),%xmm2;"
+      "movsd  0x10(%rsi),%xmm0;"
+      "mulsd  0x10(%rdx),%xmm2;"
+      "mulsd  0x8(%rdx),%xmm0;"
+      "subsd  %xmm0,%xmm2;"
+      "movsd  %xmm2,(%rcx);"
+      "movsd  0x10(%rsi),%xmm1;"
+      "movsd  (%rsi),%xmm0;"
+      "mulsd  (%rdx),%xmm1;"
+      "mulsd  0x10(%rdx),%xmm0;"
+      "subsd  %xmm0,%xmm1;"
+      "movsd  %xmm1,0x8(%rcx);"
+      "movsd  (%rsi),%xmm0;"
+      "movsd  0x8(%rsi),%xmm3;"
+      "mulsd  0x8(%rdx),%xmm0;"
+      "mulsd  (%rdx),%xmm3;"
+      "subsd  %xmm3,%xmm0;"
+      "movsd  %xmm0,0x10(%rcx);"
+      "mulsd  (%rdi),%xmm2;"
+      "movsd  %xmm2,(%rcx);"
+      "mulsd  0x8(%rdi),%xmm1;"
+      "movsd  %xmm1,0x8(%rcx);"
+      "mulsd  0x10(%rdi),%xmm0;"
+      "movsd  %xmm0,0x10(%rcx);");
 }
 
-__attribute__((always_inline))
-double scalar_triple(const double *u, const double *v, const double *w)
+static double scalar_triple(const double *u, const double *v, const double *w)
 {
-    double tmp[3];
-    cross_product(w, u, tmp);
-    return dot_product(v, tmp);
+	asm("movsd  0x8(%rdx),%xmm3;"
+      "movsd  0x10(%rdx),%xmm2;"
+      "movsd  0x10(%rdi),%xmm4;"
+      "movapd %xmm3,%xmm0;"
+      "movsd  0x8(%rdi),%xmm1;"
+      "movsd  (%rdi),%xmm5;"
+      "movapd %xmm2,%xmm7;"
+      "movsd  (%rdx),%xmm6;"
+      "mulsd  %xmm1,%xmm7;"
+      "mulsd  %xmm4,%xmm0;"
+      "mulsd  %xmm5,%xmm2;"
+      "mulsd  %xmm6,%xmm4;"
+      "mulsd  %xmm6,%xmm1;"
+      "subsd  %xmm7,%xmm0;"
+      "mulsd  %xmm5,%xmm3;"
+      "subsd  %xmm4,%xmm2;"
+      "mulsd  (%rsi),%xmm0;"
+      "subsd  %xmm3,%xmm1;"
+      "mulsd  0x8(%rsi),%xmm2;"
+      "mulsd  0x10(%rsi),%xmm1;"
+      "addsd  %xmm2,%xmm0;"
+      "addsd  %xmm1,%xmm0;");
 }
 
 #endif
