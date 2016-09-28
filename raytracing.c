@@ -453,12 +453,11 @@ static unsigned int ray_color(const point3 e, double t,
     return 1;
 }
 
-const int NUM_THREAD = 4, NUM_WORK = 100;
+const int NUM_THREAD = 4, NUM_WORK = 200;
 pthread_mutex_t thread_mutex;
 int jobs;
 
 typedef struct thread_info_entry {
-    int idx;
     uint8_t *pixels;
     color background_color;
     rectangular_node rectangulars;
@@ -545,7 +544,6 @@ void raytracing(uint8_t *pixels, color background_color,
     pthread_t *thread_array = (pthread_t *) malloc (sizeof(pthread_t) * NUM_THREAD);
     entry *message = (entry*) malloc (sizeof(entry) * NUM_THREAD);
     for(int i = 0; i < NUM_THREAD; i++) {
-        message[i].idx = i;
         message[i].pixels = pixels;
         multiply_vector(background_color, 1.0, message[i].background_color);
         message[i].rectangulars = rectangulars;
